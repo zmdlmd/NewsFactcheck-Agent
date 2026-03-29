@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NewsFactcheck Agent</title>
+  <style>
+    :root {
+      --paper: #f5f1e8;
+      --ink: #1d2733;
+      --muted: #5b6773;
+      --line: rgba(29, 39, 51, 0.14);
+      --panel: rgba(255, 252, 245, 0.9);
+      --accent: #b5472f;
+      --accent-dark: #8f3423;
+      --good: #276749;
+      --warn: #a16207;
+      --bad: #9b2c2c;
+      --shadow: 0 18px 55px rgba(44, 32, 17, 0.12);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(181, 71, 47, 0.12), transparent 30%),
+        radial-gradient(circle at top right, rgba(34, 84, 120, 0.10), transparent 28%),
+        linear-gradient(180deg, #f7f3eb 0%, #efe7da 100%);
+      font-family: Georgia, "Palatino Linotype", "Times New Roman", serif;
+    }
+
+    .page {
+      max-width: 1320px;
+      margin: 0 auto;
+      padding: 32px 20px 48px;
+      animation: fade-in 280ms ease-out;
+    }
+
+    .hero {
+      display: grid;
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+
+    .eyebrow {
+      width: fit-content;
+      padding: 6px 12px;
+      border: 1px solid rgba(181, 71, 47, 0.25);
+      border-radius: 999px;
+      background: rgba(181, 71, 47, 0.08);
+      color: var(--accent-dark);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(32px, 5vw, 64px);
+      line-height: 0.96;
+      letter-spacing: -0.03em;
+    }
+
+    .subhead {
+      max-width: 760px;
+      margin: 0;
+      color: var(--muted);
+      font-size: 18px;
+      line-height: 1.55;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(320px, 430px) minmax(0, 1fr);
+      gap: 22px;
+      align-items: start;
+    }
+
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      background: var(--panel);
+      backdrop-filter: blur(10px);
+      box-shadow: var(--shadow);
+    }
+
+    .panel-inner {
+      padding: 22px;
+    }
+
+    .panel-title {
+      margin: 0 0 16px;
+      font-size: 22px;
+      line-height: 1.1;
+    }
+
+    .muted {
+      color: var(--muted);
+    }
+
+    .field-grid {
+      display: grid;
+      gap: 14px;
+    }
+
+    label {
+      display: grid;
+      gap: 8px;
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--ink);
+    }
+
+    textarea,
+    input[type="number"],
+    input[type="text"] {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1px solid rgba(29, 39, 51, 0.18);
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.84);
+      color: var(--ink);
+      font: inherit;
+      outline: none;
+      transition: border-color 160ms ease, transform 160ms ease, box-shadow 160ms ease;
+    }
+
+    textarea {
+      min-height: 180px;
+      resize: vertical;
+      line-height: 1.55;
+    }
+
+    textarea:focus,
+    input:focus {
+      border-color: rgba(181, 71, 47, 0.55);
+      box-shadow: 0 0 0 4px rgba(181, 71, 47, 0.10);
+    }
+
+    .option-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .checkbox-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 14px;
+      color: var(--ink);
+      padding: 4px 0;
+    }
+
+    .checkbox-row input {
+      width: 16px;
+      height: 16px;
+      accent-color: var(--accent);
+    }
+
+    .button-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 8px;
+    }
+
+    button,
+    .link-button {
+      appearance: none;
+      border: 0;
+      border-radius: 16px;
+      padding: 12px 18px;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 160ms ease, background 160ms ease, opacity 160ms ease;
+      text-decoration: none;
+    }
+
+    button:hover,
+    .link-button:hover {
+      transform: translateY(-1px);
+    }
+
+    .primary {
+      background: var(--accent);
+      color: #fff7f2;
+    }
+
+    .primary:hover {
+      background: var(--accent-dark);
+    }
+
+    .secondary {
+      background: rgba(29, 39, 51, 0.08);
+      color: var(--ink);
+    }
+
+    .status-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 18px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 12px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 700;
+      border: 1px solid transparent;
+    }
+
+    .badge.idle { background: rgba(29, 39, 51, 0.08); color: var(--muted); }
+    .badge.queued { background: rgba(162, 97, 7, 0.10); color: var(--warn); border-color: rgba(162, 97, 7, 0.14); }
+    .badge.running { background: rgba(34, 84, 120, 0.10); color: #225478; border-color: rgba(34, 84, 120, 0.14); }
+    .badge.completed { background: rgba(39, 103, 73, 0.10); color: var(--good); border-color: rgba(39, 103, 73, 0.14); }
+    .badge.failed { background: rgba(155, 44, 44, 0.10); color: var(--bad); border-color: rgba(155, 44, 44, 0.14); }
+
+    .details-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .meta {
+      padding: 14px 16px;
+      border-radius: 18px;
+      background: rgba(29, 39, 51, 0.05);
+      border: 1px solid rgba(29, 39, 51, 0.08);
+    }
+
+    .meta-key {
+      margin: 0 0 6px;
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .meta-value {
+      margin: 0;
+      word-break: break-all;
+      font-family: "Cascadia Code", Consolas, "Courier New", monospace;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .stack {
+      display: grid;
+      gap: 16px;
+    }
+
+    .output-box {
+      padding: 18px;
+      border-radius: 20px;
+      border: 1px solid rgba(29, 39, 51, 0.1);
+      background: rgba(255, 255, 255, 0.62);
+    }
+
+    .output-box h2 {
+      margin: 0 0 12px;
+      font-size: 18px;
+    }
+
+    pre {
+      margin: 0;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-family: "Cascadia Code", Consolas, "Courier New", monospace;
+      font-size: 13px;
+      line-height: 1.6;
+      color: #25313d;
+    }
+
+    .markdown-view {
+      min-height: 160px;
+    }
+
+    .empty {
+      color: var(--muted);
+      font-style: italic;
+    }
+
+    .footer-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    @keyframes fade-in {
+      from {
+        opacity: 0;
+        transform: translateY(8px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @media (max-width: 980px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .details-grid,
+      .option-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="hero">
+      <div class="eyebrow">NewsFactcheck Agent</div>
+      <h1>核查不是一条搜索结果，而是一条证据链。</h1>
+      <p class="subhead">
+        这个页面直接调用项目当前的异步 fact-check API。提交 claim 后，页面会自动轮询运行状态，并展示最终 Markdown 报告、结构化 JSON 和节点日志。
+      </p>
+    </section>
+
+    <section class="layout">
+      <aside class="panel">
+        <div class="panel-inner">
+          <h2 class="panel-title">新建核查任务</h2>
+          <div class="field-grid">
+            <label>
+              输入文本
+              <textarea id="inputText">请核查：地球围绕太阳公转。</textarea>
+            </label>
+
+            <div class="option-grid">
+              <label>
+                搜索预算
+                <input id="searchBudget" type="number" min="1" value="2" />
+              </label>
+              <label>
+                抓页预算
+                <input id="fetchBudget" type="number" min="0" value="1" />
+              </label>
+              <label>
+                每个 claim 最大轮数
+                <input id="maxRounds" type="number" min="1" value="1" />
+              </label>
+              <label>
+                最大 claim 数
+                <input id="maxClaims" type="number" min="1" value="1" />
+              </label>
+            </div>
+
+            <label class="checkbox-row">
+              <input id="enableFetch" type="checkbox" checked />
+              启用抓页增强
+            </label>
+
+            <div class="button-row">
+              <button id="submitButton" class="primary" type="button">提交异步任务</button>
+              <button id="latestButton" class="secondary" type="button">读取最新 Session</button>
+            </div>
+          </div>
+
+          <div class="footer-links">
+            <a class="link-button secondary" href="/docs" target="_blank" rel="noreferrer">API Docs</a>
+            <a class="link-button secondary" href="/graph/mermaid" target="_blank" rel="noreferrer">Graph Mermaid</a>
+          </div>
+        </div>
+      </aside>
+
+      <section class="panel">
+        <div class="panel-inner">
+          <div class="status-bar">
+            <span id="statusBadge" class="badge idle">idle</span>
+            <span id="message" class="muted">等待提交任务。</span>
+          </div>
+
+          <div class="details-grid">
+            <div class="meta">
+              <p class="meta-key">Run ID</p>
+              <p id="runId" class="meta-value">-</p>
+            </div>
+            <div class="meta">
+              <p class="meta-key">Session ID</p>
+              <p id="sessionId" class="meta-value">-</p>
+            </div>
+            <div class="meta">
+              <p class="meta-key">Saved Path</p>
+              <p id="savedPath" class="meta-value">-</p>
+            </div>
+            <div class="meta">
+              <p class="meta-key">Timestamps</p>
+              <p id="timestamps" class="meta-value">-</p>
+            </div>
+          </div>
+
+          <div class="stack">
+            <section class="output-box">
+              <h2>Markdown 报告</h2>
+              <pre id="markdownBox" class="markdown-view empty">运行完成后会显示最终 Markdown。</pre>
+            </section>
+
+            <section class="output-box">
+              <h2>节点日志</h2>
+              <pre id="logsBox" class="empty">暂无日志。</pre>
+            </section>
+
+            <section class="output-box">
+              <h2>结构化结果</h2>
+              <pre id="jsonBox" class="empty">暂无结果。</pre>
+            </section>
+          </div>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <script>
+    const state = {
+      runId: null,
+      sessionId: null,
+      pollTimer: null,
+    };
+
+    const elements = {
+      inputText: document.getElementById("inputText"),
+      searchBudget: document.getElementById("searchBudget"),
+      fetchBudget: document.getElementById("fetchBudget"),
+      maxRounds: document.getElementById("maxRounds"),
+      maxClaims: document.getElementById("maxClaims"),
+      enableFetch: document.getElementById("enableFetch"),
+      submitButton: document.getElementById("submitButton"),
+      latestButton: document.getElementById("latestButton"),
+      statusBadge: document.getElementById("statusBadge"),
+      message: document.getElementById("message"),
+      runId: document.getElementById("runId"),
+      sessionId: document.getElementById("sessionId"),
+      savedPath: document.getElementById("savedPath"),
+      timestamps: document.getElementById("timestamps"),
+      markdownBox: document.getElementById("markdownBox"),
+      logsBox: document.getElementById("logsBox"),
+      jsonBox: document.getElementById("jsonBox"),
+    };
+
+    function setStatus(status, message) {
+      const safeStatus = status || "idle";
+      elements.statusBadge.className = `badge ${safeStatus}`;
+      elements.statusBadge.textContent = safeStatus;
+      elements.message.textContent = message || "";
+    }
+
+    function setPreText(node, value, emptyText) {
+      if (value) {
+        node.textContent = value;
+        node.classList.remove("empty");
+      } else {
+        node.textContent = emptyText;
+        node.classList.add("empty");
+      }
+    }
+
+    function setJson(node, value, emptyText) {
+      if (value && (Array.isArray(value) ? value.length > 0 : Object.keys(value).length > 0)) {
+        node.textContent = JSON.stringify(value, null, 2);
+        node.classList.remove("empty");
+      } else {
+        node.textContent = emptyText;
+        node.classList.add("empty");
+      }
+    }
+
+    function updateMeta(record) {
+      elements.runId.textContent = record.run_id || state.runId || "-";
+      elements.sessionId.textContent = record.session_id || state.sessionId || "-";
+      elements.savedPath.textContent = record.saved_path || "-";
+      const timestamps = [
+        record.created_at ? `created: ${record.created_at}` : null,
+        record.started_at ? `started: ${record.started_at}` : null,
+        record.finished_at ? `finished: ${record.finished_at}` : null,
+      ].filter(Boolean).join("\n");
+      elements.timestamps.textContent = timestamps || "-";
+    }
+
+    function updateOutputs(record) {
+      const logs = Array.isArray(record.logs) ? record.logs.join("\n") : "";
+      setPreText(elements.logsBox, logs, "暂无日志。");
+      setPreText(elements.markdownBox, record.final_markdown || "", "运行完成后会显示最终 Markdown。");
+      setJson(elements.jsonBox, record.final_report || {}, "暂无结果。");
+      updateMeta(record);
+    }
+
+    async function fetchRunStatus(runId) {
+      const response = await fetch(`/runs/${encodeURIComponent(runId)}`);
+      if (!response.ok) {
+        throw new Error(`读取运行状态失败: ${response.status}`);
+      }
+      return response.json();
+    }
+
+    async function pollRun(runId) {
+      try {
+        const record = await fetchRunStatus(runId);
+        state.runId = record.run_id;
+        state.sessionId = record.session_id;
+        updateOutputs(record);
+
+        if (record.status === "completed") {
+          setStatus("completed", "任务已完成。");
+          stopPolling();
+          return;
+        }
+        if (record.status === "failed") {
+          const detail = record.error?.message ? `任务失败：${record.error.message}` : "任务失败。";
+          setStatus("failed", detail);
+          stopPolling();
+          return;
+        }
+
+        const statusText = record.status === "running" ? "任务执行中，正在轮询状态。" : "任务已入队，等待 worker 处理。";
+        setStatus(record.status, statusText);
+      } catch (error) {
+        setStatus("failed", error.message || "轮询失败。");
+        stopPolling();
+      }
+    }
+
+    function stopPolling() {
+      if (state.pollTimer) {
+        clearInterval(state.pollTimer);
+        state.pollTimer = null;
+      }
+    }
+
+    function startPolling(runId) {
+      stopPolling();
+      pollRun(runId);
+      state.pollTimer = setInterval(() => pollRun(runId), 2000);
+    }
+
+    async function submitTask() {
+      const inputText = elements.inputText.value.trim();
+      if (!inputText) {
+        setStatus("failed", "请输入要核查的文本。");
+        return;
+      }
+
+      const payload = {
+        input_text: inputText,
+        search_budget: Number(elements.searchBudget.value || 0),
+        fetch_budget: Number(elements.fetchBudget.value || 0),
+        max_rounds_per_claim: Number(elements.maxRounds.value || 0),
+        max_claims: Number(elements.maxClaims.value || 0),
+        enable_fetch: elements.enableFetch.checked,
+        session_id: state.sessionId || null,
+      };
+
+      elements.submitButton.disabled = true;
+      setStatus("queued", "正在提交任务。");
+
+      try {
+        const response = await fetch("/check", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (!response.ok) {
+          throw new Error(`提交失败: ${response.status}`);
+        }
+
+        const accepted = await response.json();
+        state.runId = accepted.run_id;
+        state.sessionId = accepted.session_id;
+        updateMeta(accepted);
+        setStatus("queued", "任务已提交，开始轮询状态。");
+        startPolling(accepted.run_id);
+      } catch (error) {
+        setStatus("failed", error.message || "提交失败。");
+      } finally {
+        elements.submitButton.disabled = false;
+      }
+    }
+
+    async function loadLatestSession() {
+      if (!state.sessionId) {
+        setStatus("failed", "当前没有 session_id，先提交一次任务。");
+        return;
+      }
+
+      try {
+        const response = await fetch(`/sessions/${encodeURIComponent(state.sessionId)}/latest`);
+        if (!response.ok) {
+          throw new Error(`读取最新 session 失败: ${response.status}`);
+        }
+        const record = await response.json();
+        state.runId = record.run_id;
+        updateOutputs(record);
+        setStatus(record.status, "已读取当前 session 的最新结果。");
+        if (record.status === "queued" || record.status === "running") {
+          startPolling(record.run_id);
+        }
+      } catch (error) {
+        setStatus("failed", error.message || "读取 session 失败。");
+      }
+    }
+
+    elements.submitButton.addEventListener("click", submitTask);
+    elements.latestButton.addEventListener("click", loadLatestSession);
+  </script>
+</body>
+</html>

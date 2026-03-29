@@ -1,7 +1,9 @@
 import logging
+from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import HTMLResponse
 
 from app.agent.graph import build_graph
 from app.api import CheckAcceptedResponse, CheckRequest, CheckResponse, RunStatusResponse
@@ -12,6 +14,7 @@ from app.storage.sessions import load_latest_run, load_run_by_id
 
 router = APIRouter()
 log = logging.getLogger("routes")
+_UI_PATH = Path(__file__).resolve().parent / "webui" / "index.html"
 
 
 def _to_run_status_response(record: dict[str, Any]) -> RunStatusResponse:
@@ -55,6 +58,11 @@ def root():
         },
         "llm": {"model": s.model_name, "base_url": s.llm_base_url},
     }
+
+
+@router.get("/ui", response_class=HTMLResponse)
+def web_ui() -> HTMLResponse:
+    return HTMLResponse(_UI_PATH.read_text(encoding="utf-8"))
 
 
 @router.post("/check", response_model=CheckAcceptedResponse)

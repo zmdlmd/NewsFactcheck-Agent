@@ -144,8 +144,29 @@ python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 启动后可访问：
 
 - `http://127.0.0.1:8000/`
+- `http://127.0.0.1:8000/ui`
 - `http://127.0.0.1:8000/docs`
 - `http://127.0.0.1:8000/graph/mermaid`
+
+### 一键启动 UI
+
+Windows 下可以直接使用：
+
+```powershell
+.\start_ui.ps1
+```
+
+或者双击：
+
+```text
+start_ui.bat
+```
+
+脚本会：
+
+- 自动选择可用 Python 解释器
+- 启动 `uvicorn`
+- 自动打开浏览器到 `/ui`
 
 ## API
 

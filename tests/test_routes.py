@@ -43,6 +43,13 @@ class RoutesTests(unittest.TestCase):
             },
         )
 
+    def test_ui_route_returns_html(self):
+        resp = self.client.get("/ui")
+
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn("text/html", resp.headers["content-type"])
+        self.assertIn("NewsFactcheck Agent", resp.text)
+
     def test_sync_check_returns_completed_payload(self):
         with patch(
             "app.routes.run_factcheck",
