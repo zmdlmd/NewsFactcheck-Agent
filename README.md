@@ -227,6 +227,12 @@ To actually use RAG retrieval, you still need to:
 python scripts\build_rag_index.py --recreate
 ```
 
+For a one-click Windows bootstrap of the public starter corpus plus index rebuild:
+
+```powershell
+.\bootstrap_open_rag.ps1
+```
+
 Without those steps, the service still runs but uses web retrieval only.
 
 ## Tests

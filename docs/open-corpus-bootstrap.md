@@ -78,6 +78,32 @@ to improve retrieval metadata.
 
 ## Commands
 
+One-click bootstrap on Windows:
+
+```powershell
+.\bootstrap_open_rag.ps1
+```
+
+Or double-click:
+
+```text
+bootstrap_open_rag.bat
+```
+
+The script will:
+
+- fetch the configured public corpus sources
+- rebuild the local vector index
+- write logs to `data/logs/open-rag-bootstrap.out.log` and `data/logs/open-rag-bootstrap.err.log`
+
+Optional examples:
+
+```powershell
+.\bootstrap_open_rag.ps1 -Providers wikipedia
+.\bootstrap_open_rag.ps1 -Providers worldbank
+.\bootstrap_open_rag.ps1 -SkipFetch
+```
+
 Fetch the starter corpus:
 
 ```powershell
