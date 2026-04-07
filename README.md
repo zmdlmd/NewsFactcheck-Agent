@@ -252,6 +252,7 @@ These runtime artifacts should not be committed.
 
 - Iteration summary: [`docs/iteration-summary-2026-03-29.md`](docs/iteration-summary-2026-03-29.md)
 - Interview deep dive: [`docs/ai-agent-interview-project-deep-dive.md`](docs/ai-agent-interview-project-deep-dive.md)
+- Open corpus bootstrap: [`docs/open-corpus-bootstrap.md`](docs/open-corpus-bootstrap.md)
 - RAG complete summary: [`docs/rag-complete-summary.md`](docs/rag-complete-summary.md)
 - RAG Phase 1: [`docs/rag-phase-1-summary.md`](docs/rag-phase-1-summary.md)
 - RAG Phase 2: [`docs/rag-phase-2-summary.md`](docs/rag-phase-2-summary.md)

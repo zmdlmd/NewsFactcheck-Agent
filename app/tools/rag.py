@@ -28,7 +28,14 @@ def _build_embeddings(settings: Settings):
 
     from langchain_openai import OpenAIEmbeddings
 
-    kwargs: dict[str, Any] = {"model": settings.embedding_model}
+    kwargs: dict[str, Any] = {
+        "model": settings.embedding_model,
+        # DashScope's OpenAI-compatible embeddings endpoint expects raw strings.
+        # Disable LangChain's token-length splitting path to avoid sending token arrays.
+        "check_embedding_ctx_length": False,
+        # DashScope rejects embedding batches larger than 10 inputs.
+        "chunk_size": 10,
+    }
     if settings.embedding_base_url:
         kwargs["openai_api_base"] = settings.embedding_base_url
     if settings.embedding_api_key:

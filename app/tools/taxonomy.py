@@ -72,6 +72,11 @@ _REGION_ALIASES = {
 }
 
 _KEY_ALIASES = {
+    "source-policy": "source_policy",
+    "source-name": "source_name",
+    "doc-id": "doc_id",
+    "chunk-id": "chunk_id",
+    "origin-url": "origin_url",
     "language": "lang",
     "locale": "lang",
     "type": "category",
@@ -269,6 +274,21 @@ def format_rag_filters(filters: dict[str, Any] | None) -> str:
 
 def _guess_category(text_blob: str) -> str | None:
     lowered = (text_blob or "").lower()
+    path_parts = {_slug(part) for part in lowered.replace("\\", "/").split("/") if part.strip()}
+    if "data" in path_parts or "dataset" in path_parts or "datasets" in path_parts:
+        return "data"
+    if "reference" in path_parts or "references" in path_parts:
+        return "reference"
+    if "research" in path_parts or "paper" in path_parts or "papers" in path_parts:
+        return "research"
+    if "policy" in path_parts or "policies" in path_parts:
+        return "policy"
+    if "news" in path_parts:
+        return "news"
+    if "announcement" in path_parts or "announcements" in path_parts:
+        return "announcement"
+    if "report" in path_parts or "reports" in path_parts:
+        return "report"
     for category, hints in _CATEGORY_HINTS.items():
         if any(hint in lowered for hint in hints):
             return category

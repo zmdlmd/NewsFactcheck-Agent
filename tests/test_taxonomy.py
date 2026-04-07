@@ -8,7 +8,7 @@ class TaxonomyTests(unittest.TestCase):
         filters = {
             "language": "English",
             "type": "press release",
-            "policy": "gov",
+            "source-policy": "gov",
             "topic": "Space Exploration",
             "ignored": "",
         }
@@ -37,6 +37,17 @@ class TaxonomyTests(unittest.TestCase):
         self.assertEqual(metadata["topic"], "finance")
         self.assertEqual(metadata["region"], "global")
         self.assertEqual(metadata["source_policy"], "institutional")
+
+    def test_normalize_taxonomy_metadata_infers_data_category_from_path_segment(self):
+        metadata = normalize_taxonomy_metadata(
+            {"path": "open/official/data/world-bank/sp-pop-totl.md", "source_name": "local-corpus"},
+            title="sp-pop-totl",
+            source_name="local-corpus",
+            path="open/official/data/world-bank/sp-pop-totl.md",
+        )
+
+        self.assertEqual(metadata["category"], "data")
+        self.assertEqual(metadata["source_policy"], "official")
 
 
 if __name__ == "__main__":

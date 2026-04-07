@@ -26,6 +26,10 @@ Thumbs.db
 # Runtime outputs
 data/cache/*
 !data/cache/.gitkeep
+data/rag_corpus/**
+!data/rag_corpus/.gitkeep
+data/rag_index/**
+!data/rag_index/.gitkeep
 data/sessions/*
 !data/sessions/.gitkeep
 *.log
