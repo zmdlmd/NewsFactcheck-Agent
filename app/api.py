@@ -36,6 +36,7 @@ class CheckResponse(BaseModel):
     final_report: dict = Field(default_factory=dict)
     final_markdown: str = ""
     logs: list[str] = Field(default_factory=list)
+    retrieval_diagnostics: list[dict] = Field(default_factory=list)
     saved_path: str = ""
     error: Optional[RunError] = None
 
@@ -48,6 +49,7 @@ class RunStatusResponse(BaseModel):
     final_report: dict = Field(default_factory=dict)
     final_markdown: str = ""
     logs: list[str] = Field(default_factory=list)
+    retrieval_diagnostics: list[dict] = Field(default_factory=list)
     error: Optional[RunError] = None
     created_at: Optional[str] = None
     updated_at: Optional[str] = None

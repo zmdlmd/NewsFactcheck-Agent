@@ -33,10 +33,12 @@ def build_initial_state(
         "pro_plan": None,
         "con_plan": None,
         "logs": [],
+        "retrieval_diagnostics": [],
         "final_report": None,
         "final_markdown": None,
         "_model_name": settings.model_name,
         "_llm_api_key": settings.llm_api_key,
         "_llm_base_url": settings.llm_base_url,
+        "_retrieval_mode": settings.retrieval_mode,
     }
     return state

@@ -27,6 +27,7 @@ def _to_run_status_response(record: dict[str, Any]) -> RunStatusResponse:
         final_report=response.get("final_report") or {},
         final_markdown=response.get("final_markdown") or "",
         logs=record.get("logs") or [],
+        retrieval_diagnostics=response.get("retrieval_diagnostics") or [],
         error=record.get("error"),
         created_at=record.get("created_at"),
         updated_at=record.get("updated_at"),
@@ -109,6 +110,7 @@ def check_sync(req: CheckRequest) -> CheckResponse:
         final_report=result.final_report,
         final_markdown=result.final_markdown,
         logs=result.logs,
+        retrieval_diagnostics=result.retrieval_diagnostics,
         saved_path=result.saved_path,
         error=result.error,
     )

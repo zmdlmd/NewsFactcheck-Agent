@@ -1,44 +1,23 @@
 # FactCheck Multi-Agent
 
-一个基于 `FastAPI + LangGraph + LLM + Tavily` 的多代理事实核查服务。
+A fact-checking agent service built with `FastAPI`, `LangGraph`, OpenAI-compatible LLM calls, and web/RAG retrieval.
 
-它的目标不是只返回一条搜索结果，而是把输入文本拆成多个可核查 claim，再经过规划、正反检索、可选抓页、裁决和报告生成，输出结构化核查结果。
+The project does not just return a search result. It turns input text into checkable claims, plans evidence collection, runs pro/con retrieval, optionally fetches full pages, judges each claim, and produces a final structured report.
 
 ![Graph](docs/assets/graph.png)
 
-## 功能特点
+## Features
 
-- 多 claim 拆分：把一段输入文本拆成多个可独立核查的 claim
-- Supervisor 驱动：按 claim 决定下一步是继续搜索、抓页还是进入下一个 claim
-- 正反双向检索：分别收集支持和反驳来源
-- 抓页增强：支持 HTML、纯文本和 PDF 抓取，并有缓存与质量过滤
-- 任务式接口：支持异步提交、状态查询和同步兼容入口
-- 结果持久化：保存 `queued/running/completed/failed` 生命周期数据
-- 离线测试：当前已经补到 30+ 个单元测试
+- Multi-claim extraction from raw input text
+- Supervisor-driven graph execution
+- Pro/con evidence collection
+- Web, RAG, and hybrid retrieval modes
+- Optional HTML, plain text, and PDF fetch
+- Async task submission and status polling
+- Local persistence for run lifecycle data
+- Retrieval diagnostics and reranking support
 
-## 工作流
-
-主流程大致如下：
-
-1. 提取 claims
-2. Supervisor 决定当前 claim 的动作
-3. 分别生成 `pro` / `con` 搜索计划
-4. 执行搜索并合并来源
-5. 可选抓取关键页面正文
-6. 裁决 claim
-7. 生成最终报告
-
-当前抓页层已经支持两类优先级增强：
-
-- 通用来源质量排序
-- claim 类型感知排序
-
-其中：
-
-- 数值类 claim 更偏 `report/data/statistics/pdf`
-- 时效类 claim 更偏 `news/press/update/announcement`
-
-## 项目结构
+## Project Structure
 
 ```text
 app/
@@ -50,10 +29,6 @@ app/
     state.py
     state_factory.py
     node_handlers/
-      planning.py
-      research.py
-      judgement.py
-      reporting.py
     prompts/
   core/
     config.py
@@ -64,25 +39,31 @@ app/
   storage/
     sessions.py
   tools/
-    search.py
     fetch.py
+    rag.py
+    retrieval.py
+    search.py
+    taxonomy.py
   api.py
   main.py
   routes.py
-tests/
+  webui/
 docs/
 eval/
+scripts/
+tests/
 ```
 
-## 环境要求
+## Requirements
 
 - Python 3.10+
-- 一个 OpenAI-compatible LLM 接口
-- Tavily API Key
+- An OpenAI-compatible chat model
+- Tavily API key for web retrieval
+- An embedding model if `RETRIEVAL_MODE` uses `rag` or `hybrid`
 
-## 安装
+## Setup
 
-### 使用 venv
+### venv
 
 ```powershell
 python -m venv .venv
@@ -91,7 +72,7 @@ python -m pip install -r requirements.txt
 copy .env.example .env
 ```
 
-### 使用 conda
+### conda
 
 ```powershell
 conda create -n factcheck-ma python=3.11 -y
@@ -100,85 +81,79 @@ python -m pip install -r requirements.txt
 copy .env.example .env
 ```
 
-## 配置
+## Configuration
 
-至少需要配置这些字段：
+Minimum required fields in `.env`:
 
 - `MODEL_NAME`
 - `LLM_API_KEY`
 - `LLM_BASE_URL`
 - `TAVILY_API_KEY`
 
-常用可选项：
+Common optional fields:
 
 - `MAX_CLAIMS`
 - `SEARCH_BUDGET`
 - `MAX_ROUNDS_PER_CLAIM`
 - `ENABLE_FETCH`
 - `FETCH_BUDGET`
-- `SEARCH_CACHE_ENABLED`
-- `SEARCH_CACHE_TTL_SECONDS`
-- `FETCH_CACHE_ENABLED`
-- `FETCH_CACHE_TTL_SECONDS`
-- `FETCH_MAX_BYTES`
-- `FETCH_MIN_TEXT_CHARS`
-- `FETCH_MIN_TEXT_RATIO`
-- `DATA_DIR`
+- `RETRIEVAL_MODE`
+- `RAG_BACKEND`
+- `RAG_COLLECTION`
+- `RAG_TOP_K`
+- `RERANK_MODE`
+- `RETRIEVAL_DIAGNOSTICS_ENABLED`
+- `RAG_INDEX_DIR`
+- `RAG_DOCS_DIR`
 
-示例见 [`.env.example`](.env.example)。
+See [`.env.example`](.env.example) for a full example.
 
-## 启动
+## Run
 
-项目会在启动时自动读取根目录 `.env`，并自动启动后台 factcheck worker。
+Start the API server:
 
 ```powershell
 uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
-如果你已经有固定解释器，也可以这样启动：
+Or:
 
 ```powershell
 python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
-启动后可访问：
+After startup:
 
 - `http://127.0.0.1:8000/`
 - `http://127.0.0.1:8000/ui`
 - `http://127.0.0.1:8000/docs`
 - `http://127.0.0.1:8000/graph/mermaid`
 
-### 一键启动 UI
+### One-click UI Startup
 
-Windows 下可以直接使用：
+On Windows:
 
 ```powershell
 .\start_ui.ps1
 ```
 
-或者双击：
+Or double-click:
 
 ```text
 start_ui.bat
 ```
 
-脚本会：
-
-- 自动选择可用 Python 解释器
-- 启动 `uvicorn`
-- 自动打开浏览器到 `/ui`
-
 ## API
 
 ### `POST /check`
 
-异步提交任务，立即返回 `run_id`。
+Submit an async fact-check task and get back a `run_id`.
 
-请求体：
+Example body:
 
 ```json
 {
-  "input_text": "请核查：地球围绕太阳公转。",
+  "input_text": "Fact-check this claim: Earth orbits the Sun.",
   "search_budget": 2,
   "max_rounds_per_claim": 1,
   "enable_fetch": true,
@@ -187,46 +162,29 @@ start_ui.bat
 }
 ```
 
-典型响应：
+### `POST /check/sync`
 
-```json
-{
-  "session_id": "s20260329_071630_255694",
-  "run_id": "r20260329_071630_255694",
-  "status": "queued",
-  "saved_path": "data/sessions/.../run.json",
-  "status_url": "/runs/r20260329_071630_255694"
-}
-```
+Run synchronously and return the final response directly.
 
 ### `GET /runs/{run_id}`
 
-轮询任务状态，可能返回：
-
-- `queued`
-- `running`
-- `completed`
-- `failed`
-
-### `POST /check/sync`
-
-同步执行并直接返回最终结果。适合调试，不适合前端长时间阻塞调用。
+Check task status and final result.
 
 ### `GET /sessions/{session_id}/latest`
 
-读取某个 session 最新一次运行记录。
+Read the latest run inside a session.
 
 ### `GET /graph/mermaid`
 
-返回当前 LangGraph 的 Mermaid 表达。
+Return the LangGraph Mermaid representation.
 
-## 最小调用示例
+## Minimal Request Example
 
 ### PowerShell
 
 ```powershell
 $body = @{
-  input_text = "请核查：地球围绕太阳公转。"
+  input_text = "Fact-check this claim: Earth orbits the Sun."
   search_budget = 2
   max_rounds_per_claim = 1
   enable_fetch = $true
@@ -256,41 +214,55 @@ curl -X POST "http://127.0.0.1:8000/check" \
   }'
 ```
 
-## 测试
+## RAG Usage
 
-运行全部单元测试：
+To actually use RAG retrieval, you still need to:
+
+1. Set `RETRIEVAL_MODE=rag` or `RETRIEVAL_MODE=hybrid`
+2. Configure `EMBEDDING_MODEL`
+3. Put corpus files into `RAG_DOCS_DIR`
+4. Build the index
+
+```powershell
+python scripts\build_rag_index.py --recreate
+```
+
+Without those steps, the service still runs but uses web retrieval only.
+
+## Tests
+
+Run the full test suite:
 
 ```powershell
 python -m unittest discover -s tests -v
 ```
 
-当前测试覆盖了：
+## Data Output
 
-- 配置读取
-- graph 装配
-- runner 生命周期
-- 任务恢复
-- 搜索排序与缓存
-- 抓页提取、过滤与优先级
-- 路由契约
-
-## 数据与运行产物
-
-默认情况下，项目会把运行和缓存写到 `data/`：
+Runtime data is stored under `data/`, including:
 
 - `data/cache/search`
 - `data/cache/fetch`
 - `data/sessions`
+- `data/rag_index`
 
-这些内容已经在 `.gitignore` 中排除，不建议提交到仓库。
+These runtime artifacts should not be committed.
 
-## 当前边界
+## Documentation
 
-- 任务系统目前是进程内 worker，适合本地和单实例部署
-- 搜索和抓页优先级主要依赖启发式
-- 还没有完整的离线评测数据集和回归基准
-- 一些历史中文字符串仍有编码痕迹，后续还需要统一清理
+- Iteration summary: [`docs/iteration-summary-2026-03-29.md`](docs/iteration-summary-2026-03-29.md)
+- Interview deep dive: [`docs/ai-agent-interview-project-deep-dive.md`](docs/ai-agent-interview-project-deep-dive.md)
+- RAG complete summary: [`docs/rag-complete-summary.md`](docs/rag-complete-summary.md)
+- RAG Phase 1: [`docs/rag-phase-1-summary.md`](docs/rag-phase-1-summary.md)
+- RAG Phase 2: [`docs/rag-phase-2-summary.md`](docs/rag-phase-2-summary.md)
+- RAG Phase 3: [`docs/rag-phase-3-summary.md`](docs/rag-phase-3-summary.md)
+- RAG Phase 4: [`docs/rag-phase-4-summary.md`](docs/rag-phase-4-summary.md)
+- RAG Phase 5: [`docs/rag-phase-5-summary.md`](docs/rag-phase-5-summary.md)
+- RAG Phase 6: [`docs/rag-phase-6-summary.md`](docs/rag-phase-6-summary.md)
 
-## 进一步说明
+## Current Limits
 
-详细的本轮迭代记录见 [`docs/iteration-summary-2026-03-29.md`](docs/iteration-summary-2026-03-29.md)。
+- The task worker is still in-process and best suited for local or single-instance deployment
+- Retrieval and fetch ranking still rely partly on heuristics
+- RAG only becomes active after corpus ingestion and index build
+- The project is optimized for fact-check workflows, not general chat QA

@@ -60,6 +60,7 @@ class RoutesTests(unittest.TestCase):
                 final_report={"overall_summary": "ok", "claims": []},
                 final_markdown="# ok",
                 logs=["done"],
+                retrieval_diagnostics=[{"side": "pro", "mode": "hybrid"}],
                 saved_path="./data/sessions/session-2/run-2.json",
                 error=None,
             ),
@@ -69,6 +70,7 @@ class RoutesTests(unittest.TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.json()["status"], "completed")
         self.assertEqual(resp.json()["run_id"], "run-2")
+        self.assertEqual(resp.json()["retrieval_diagnostics"], [{"side": "pro", "mode": "hybrid"}])
 
     def test_get_run_status_reads_persisted_record(self):
         record = {
@@ -76,8 +78,8 @@ class RoutesTests(unittest.TestCase):
             "run_id": "run-3",
             "status": "failed",
             "saved_path": "./data/sessions/session-3/run-3.json",
-            "response": {},
             "logs": ["starting"],
+            "response": {"retrieval_diagnostics": [{"side": "con", "mode": "rag"}]},
             "error": {"type": "RuntimeError", "message": "boom"},
             "created_at": "created",
             "updated_at": "updated",
@@ -92,6 +94,7 @@ class RoutesTests(unittest.TestCase):
         self.assertEqual(body["status"], "failed")
         self.assertEqual(body["error"]["message"], "boom")
         self.assertEqual(body["saved_path"], "./data/sessions/session-3/run-3.json")
+        self.assertEqual(body["retrieval_diagnostics"], [{"side": "con", "mode": "rag"}])
 
     def test_get_latest_session_run_reads_latest_record(self):
         record = {
@@ -99,7 +102,11 @@ class RoutesTests(unittest.TestCase):
             "run_id": "run-4",
             "status": "completed",
             "saved_path": "./data/sessions/session-4/run-4.json",
-            "response": {"final_report": {"overall_summary": "ok", "claims": []}, "final_markdown": "# ok"},
+            "response": {
+                "final_report": {"overall_summary": "ok", "claims": []},
+                "final_markdown": "# ok",
+                "retrieval_diagnostics": [{"side": "pro", "mode": "hybrid"}],
+            },
             "logs": ["done"],
             "error": None,
             "created_at": "created",
@@ -113,6 +120,7 @@ class RoutesTests(unittest.TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.json()["run_id"], "run-4")
         self.assertEqual(resp.json()["status"], "completed")
+        self.assertEqual(resp.json()["retrieval_diagnostics"], [{"side": "pro", "mode": "hybrid"}])
 
 
 if __name__ == "__main__":

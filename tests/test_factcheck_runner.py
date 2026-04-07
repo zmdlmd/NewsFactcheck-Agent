@@ -40,6 +40,7 @@ class RunFactcheckTests(unittest.TestCase):
                 "final_report": {"overall_summary": "ok", "claims": []},
                 "final_markdown": "# ok",
                 "logs": ["done"],
+                "retrieval_diagnostics": [{"side": "pro", "mode": "hybrid"}],
             }
         )
 
@@ -83,6 +84,7 @@ class RunFactcheckTests(unittest.TestCase):
         self.assertEqual(result.run_id, "run-1")
         self.assertEqual(result.status, "completed")
         self.assertEqual(result.saved_path, "saved/path.json")
+        self.assertEqual(result.retrieval_diagnostics, [{"side": "pro", "mode": "hybrid"}])
         wait_for_all_tracers.assert_called_once()
         self.assertEqual(save_run.call_count, 2)
 
@@ -97,6 +99,7 @@ class RunFactcheckTests(unittest.TestCase):
         self.assertEqual(second_record.updated_at, "finished")
         self.assertEqual(second_record.finished_at, "finished")
         self.assertEqual(second_record.response["final_report"], {"overall_summary": "ok", "claims": []})
+        self.assertEqual(second_record.response["retrieval_diagnostics"], [{"side": "pro", "mode": "hybrid"}])
         self.assertEqual(second_record.logs, ["done"])
 
     def test_run_factcheck_persists_failure(self):
@@ -124,6 +127,7 @@ class RunFactcheckTests(unittest.TestCase):
         self.assertEqual(first_record.status, "running")
         self.assertEqual(second_record.status, "failed")
         self.assertEqual(second_record.error, {"type": "RuntimeError", "message": "boom"})
+        self.assertEqual(second_record.response["retrieval_diagnostics"], [])
         self.assertEqual(second_record.finished_at, "finished")
 
     def test_run_factcheck_can_skip_persistence(self):
@@ -132,6 +136,7 @@ class RunFactcheckTests(unittest.TestCase):
                 "final_report": {"overall_summary": "ok", "claims": []},
                 "final_markdown": "# ok",
                 "logs": [],
+                "retrieval_diagnostics": [],
             }
         )
 

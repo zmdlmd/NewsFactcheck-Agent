@@ -14,6 +14,8 @@ from app.agent.prompts.planning import (
     supervisor_user_prompt,
 )
 from app.agent.state import AgentState, ClaimWork
+from app.tools.claim_profile import build_claim_profile, summarize_claim_profile
+from app.tools.taxonomy import normalize_rag_filters
 
 
 _INPUT_PREFIX_RE = re.compile(
@@ -36,6 +38,31 @@ def _dedupe_list(xs: List[str]) -> List[str]:
         seen.add(x)
         out.append(x)
     return out
+
+
+def _finalize_rag_filters(
+    filters: Dict[str, Any] | None,
+    *,
+    retrieval_mode: str,
+    claim_text: str,
+) -> Dict[str, List[str]]:
+    cleaned = normalize_rag_filters(filters)
+    if retrieval_mode == "web":
+        return cleaned
+
+    profile = build_claim_profile(claim_text)
+    if "lang" not in cleaned and profile.get("language") in {"en", "zh"}:
+        cleaned["lang"] = [str(profile["language"])]
+    if "category" not in cleaned:
+        if profile.get("numeric") and not profile.get("temporal"):
+            cleaned["category"] = ["report"]
+        elif profile.get("temporal") and not profile.get("numeric"):
+            cleaned["category"] = ["announcement"]
+    return cleaned
+
+
+def _planner_claim_profile_summary(claim_text: str) -> str:
+    return summarize_claim_profile(build_claim_profile(claim_text))
 
 
 def _normalize_claim_text(text: str | None) -> str:
@@ -240,7 +267,13 @@ def node_pro_planner(state: AgentState) -> Dict[str, Any]:
     plan = state["supervisor_plan"] or {}
 
     sys = planner_system_prompt("pro")
-    user = planner_user_prompt(active, plan, side="pro")
+    user = planner_user_prompt(
+        active,
+        plan,
+        side="pro",
+        retrieval_mode=state.get("_retrieval_mode", "web"),
+        claim_profile=_planner_claim_profile_summary(active["text"]),
+    )
     out: SearchPlan = invoke_structured(model, SearchPlan, sys, user)
     plan_dict = out.model_dump()
     plan_dict["include_domains"] = _dedupe_list(
@@ -248,6 +281,11 @@ def node_pro_planner(state: AgentState) -> Dict[str, Any]:
     )
     plan_dict["exclude_domains"] = _dedupe_list(
         plan_dict.get("exclude_domains", []) + (plan.get("avoid_domains") or [])
+    )
+    plan_dict["rag_filters"] = _finalize_rag_filters(
+        plan_dict.get("rag_filters"),
+        retrieval_mode=state.get("_retrieval_mode", "web"),
+        claim_text=active["text"],
     )
     return {"pro_plan": plan_dict, "logs": [f"[pro_planner] {plan_dict['query']}"]}
 
@@ -262,7 +300,13 @@ def node_con_planner(state: AgentState) -> Dict[str, Any]:
     plan = state["supervisor_plan"] or {}
 
     sys = planner_system_prompt("con")
-    user = planner_user_prompt(active, plan, side="con")
+    user = planner_user_prompt(
+        active,
+        plan,
+        side="con",
+        retrieval_mode=state.get("_retrieval_mode", "web"),
+        claim_profile=_planner_claim_profile_summary(active["text"]),
+    )
     out: SearchPlan = invoke_structured(model, SearchPlan, sys, user)
     plan_dict = out.model_dump()
     plan_dict["include_domains"] = _dedupe_list(
@@ -270,5 +314,10 @@ def node_con_planner(state: AgentState) -> Dict[str, Any]:
     )
     plan_dict["exclude_domains"] = _dedupe_list(
         plan_dict.get("exclude_domains", []) + (plan.get("avoid_domains") or [])
+    )
+    plan_dict["rag_filters"] = _finalize_rag_filters(
+        plan_dict.get("rag_filters"),
+        retrieval_mode=state.get("_retrieval_mode", "web"),
+        claim_text=active["text"],
     )
     return {"con_plan": plan_dict, "logs": [f"[con_planner] {plan_dict['query']}"]}

@@ -27,6 +27,7 @@ class AgentState(TypedDict):
     con_plan: Optional[Dict[str, Any]]
 
     logs: Annotated[List[str], operator.add]
+    retrieval_diagnostics: Annotated[List[Dict[str, Any]], operator.add]
 
     final_report: Optional[Dict[str, Any]]
     final_markdown: Optional[str]
@@ -34,3 +35,4 @@ class AgentState(TypedDict):
     _model_name: str
     _llm_api_key: Optional[str]
     _llm_base_url: Optional[str]
+    _retrieval_mode: str

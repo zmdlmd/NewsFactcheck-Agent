@@ -19,6 +19,7 @@ class FactcheckRunResult:
     final_report: dict[str, Any]
     final_markdown: str
     logs: list[str]
+    retrieval_diagnostics: list[dict[str, Any]]
     saved_path: str
     error: dict[str, Any] | None = None
 
@@ -120,6 +121,7 @@ def run_factcheck(
         final_report = out.get("final_report") or {}
         final_markdown = out.get("final_markdown") or ""
         logs = out.get("logs") or []
+        retrieval_diagnostics = out.get("retrieval_diagnostics") or []
         finished_at = utc_now_iso()
 
         if persist:
@@ -133,6 +135,7 @@ def run_factcheck(
                     response={
                         "final_report": final_report,
                         "final_markdown": final_markdown,
+                        "retrieval_diagnostics": retrieval_diagnostics,
                     },
                     logs=logs,
                     error=None,
@@ -150,12 +153,14 @@ def run_factcheck(
             final_report=final_report,
             final_markdown=final_markdown,
             logs=logs,
+            retrieval_diagnostics=retrieval_diagnostics,
             saved_path=saved_path,
             error=None,
         )
     except Exception as exc:
         finished_at = utc_now_iso()
         logs = state.get("logs", [])
+        retrieval_diagnostics = state.get("retrieval_diagnostics", [])
         error = {"type": exc.__class__.__name__, "message": str(exc)}
         if persist:
             saved_path = save_run(
@@ -165,7 +170,7 @@ def run_factcheck(
                     run_id=run_id,
                     status="failed",
                     request=payload,
-                    response={},
+                    response={"retrieval_diagnostics": retrieval_diagnostics},
                     logs=logs,
                     error=error,
                     created_at=created_at,

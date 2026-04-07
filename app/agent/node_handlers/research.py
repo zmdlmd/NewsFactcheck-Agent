@@ -4,8 +4,11 @@ import re
 from typing import Any, Dict, List
 
 from app.agent.state import AgentState
+from app.core.config import get_settings
+from app.tools.claim_profile import build_claim_profile
 from app.tools.fetch import fetch_page_text
-from app.tools.search import dedupe_by_url, score_source, tavily_search
+from app.tools.retrieval import dedupe_sources, format_retrieval_diagnostics, retrieve_sources_detailed
+from app.tools.search import score_source
 
 
 _NUMERIC_CLAIM_RE = re.compile(
@@ -79,22 +82,35 @@ def node_pro_search(state: AgentState) -> Dict[str, Any]:
     if not query:
         return {"logs": ["[pro_search] empty query"]}
 
+    claim_text = _active_claim_text(state)
     state["search_budget_remaining"] -= 1
-    res = tavily_search(
+    res, diagnostics = retrieve_sources_detailed(
         query,
-        search_plan.get("include_domains"),
-        search_plan.get("exclude_domains"),
+        claim_text=claim_text,
+        include_domains=search_plan.get("include_domains"),
+        exclude_domains=search_plan.get("exclude_domains"),
         max_results=5,
+        rag_filters=search_plan.get("rag_filters"),
     )
 
     cid = state["active_claim_id"]
     claim_work = state["work"][cid]
-    claim_work["pro_sources"] = dedupe_by_url(claim_work["pro_sources"] + res)
+    claim_work["pro_sources"] = dedupe_sources(claim_work["pro_sources"] + res)
+    diagnostics_entry = {
+        **diagnostics,
+        "side": "pro",
+        "claim_id": cid,
+        "query": query,
+    }
+    logs = [f"[pro_search] +{len(res)} remaining={state['search_budget_remaining']}"]
+    if get_settings().retrieval_diagnostics_enabled:
+        logs.append(f"[pro_search.diagnostics] {format_retrieval_diagnostics(diagnostics)}")
 
     return {
         "work": state["work"],
         "search_budget_remaining": state["search_budget_remaining"],
-        "logs": [f"[pro_search] +{len(res)} remaining={state['search_budget_remaining']}"],
+        "retrieval_diagnostics": [diagnostics_entry],
+        "logs": logs,
     }
 
 
@@ -111,22 +127,35 @@ def node_con_search(state: AgentState) -> Dict[str, Any]:
     if not query:
         return {"logs": ["[con_search] empty query"]}
 
+    claim_text = _active_claim_text(state)
     state["search_budget_remaining"] -= 1
-    res = tavily_search(
+    res, diagnostics = retrieve_sources_detailed(
         query,
-        search_plan.get("include_domains"),
-        search_plan.get("exclude_domains"),
+        claim_text=claim_text,
+        include_domains=search_plan.get("include_domains"),
+        exclude_domains=search_plan.get("exclude_domains"),
         max_results=5,
+        rag_filters=search_plan.get("rag_filters"),
     )
 
     cid = state["active_claim_id"]
     claim_work = state["work"][cid]
-    claim_work["con_sources"] = dedupe_by_url(claim_work["con_sources"] + res)
+    claim_work["con_sources"] = dedupe_sources(claim_work["con_sources"] + res)
+    diagnostics_entry = {
+        **diagnostics,
+        "side": "con",
+        "claim_id": cid,
+        "query": query,
+    }
+    logs = [f"[con_search] +{len(res)} remaining={state['search_budget_remaining']}"]
+    if get_settings().retrieval_diagnostics_enabled:
+        logs.append(f"[con_search.diagnostics] {format_retrieval_diagnostics(diagnostics)}")
 
     return {
         "work": state["work"],
         "search_budget_remaining": state["search_budget_remaining"],
-        "logs": [f"[con_search] +{len(res)} remaining={state['search_budget_remaining']}"],
+        "retrieval_diagnostics": [diagnostics_entry],
+        "logs": logs,
     }
 
 
@@ -143,11 +172,11 @@ def _active_claim_text(state: AgentState) -> str:
 
 
 def _claim_profile(claim_text: str) -> Dict[str, Any]:
-    years = set(re.findall(r"(?:19|20)\d{2}", claim_text or ""))
+    profile = build_claim_profile(claim_text)
     return {
-        "numeric": bool(_NUMERIC_CLAIM_RE.search(claim_text or "")),
-        "temporal": bool(_TEMPORAL_CLAIM_RE.search(claim_text or "")),
-        "years": years,
+        "numeric": bool(profile.get("numeric")),
+        "temporal": bool(profile.get("temporal")),
+        "years": set(profile.get("years") or []),
     }
 
 
@@ -182,7 +211,7 @@ def _rank_fetch_candidates(sources: List[Dict[str, Any]], claim_profile: Dict[st
     seen_urls = set()
     for index, source in enumerate(sources):
         url = (source.get("url") or "").strip()
-        if not url or source.get("page_fetch_attempted"):
+        if not url or source.get("page_fetch_attempted") or source.get("source_type") == "rag":
             continue
         if url in seen_urls:
             continue

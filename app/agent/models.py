@@ -1,4 +1,4 @@
-from typing import List, Literal, Optional
+from typing import Any, Dict, List, Literal, Optional
 from pydantic import BaseModel, Field
 
 class ClaimItem(BaseModel):
@@ -28,11 +28,18 @@ class SearchPlan(BaseModel):
     query: str
     include_domains: List[str] = Field(default_factory=list)
     exclude_domains: List[str] = Field(default_factory=list)
+    rag_filters: Dict[str, str | List[str]] = Field(default_factory=dict)
 
 class SourceItem(BaseModel):
     title: str
     url: str
     snippet: str
+    source_type: Literal["web", "rag"] = "web"
+    source_name: Optional[str] = None
+    doc_id: Optional[str] = None
+    chunk_id: Optional[str] = None
+    score: Optional[float] = None
+    metadata: Dict[str, Any] = Field(default_factory=dict)
     page_text: Optional[str] = None
 
 class Judgement(BaseModel):

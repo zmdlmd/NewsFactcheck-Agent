@@ -11,6 +11,7 @@ class BuildInitialStateTests(unittest.TestCase):
             max_claims=5,
             llm_api_key="secret",
             llm_base_url="https://example.com/v1",
+            retrieval_mode="hybrid",
             search_budget=10,
             max_rounds_per_claim=2,
             enable_fetch=False,
@@ -29,9 +30,11 @@ class BuildInitialStateTests(unittest.TestCase):
         self.assertEqual(state["_model_name"], "test-model")
         self.assertEqual(state["_llm_api_key"], "secret")
         self.assertEqual(state["_llm_base_url"], "https://example.com/v1")
+        self.assertEqual(state["_retrieval_mode"], "hybrid")
         self.assertEqual(state["claims"], [])
         self.assertEqual(state["work"], {})
         self.assertEqual(state["logs"], [])
+        self.assertEqual(state["retrieval_diagnostics"], [])
         self.assertIsNone(state["final_report"])
         self.assertIsNone(state["final_markdown"])
 
@@ -41,6 +44,7 @@ class BuildInitialStateTests(unittest.TestCase):
             max_claims=5,
             llm_api_key="secret",
             llm_base_url="https://example.com/v1",
+            retrieval_mode="web",
             search_budget=10,
             max_rounds_per_claim=2,
             enable_fetch=False,
